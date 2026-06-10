@@ -1,0 +1,82 @@
+name: CI - Tests & Code Quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Run tests with coverage
+        run: uv run pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Run Ruff linting
+        run: uv run ruff check app/ tests/
+
+      - name: Check code formatting with Ruff
+        run: uv run ruff format --check app/ tests/
+
+      - name: Run type checking with mypy
+        run: uv run mypy app/ --ignore-missing-imports || true
+
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Run security checks with bandit
+        run: uv run pip install bandit && uv run bandit -r app/ || true
+
+      - name: Check dependencies for vulnerabilities
+        run: uv pip compile pyproject.toml --all-extras --output-file /tmp/requirements.txt && safety check --file /tmp/requirements.txt || true

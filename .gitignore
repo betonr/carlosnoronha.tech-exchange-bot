@@ -8,7 +8,6 @@ __pycache__/
 .venv/
 
 # IDEs
-.vscode/
 .idea/
 
 # OS

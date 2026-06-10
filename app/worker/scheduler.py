@@ -20,11 +20,19 @@ class Scheduler:
         self._repo = ExchangeRateRepository()
 
     def _within_window(self) -> bool:
-        return self._settings.window_start <= datetime.now().hour < self._settings.window_end
+        return (
+            self._settings.window_start
+            <= datetime.now().hour
+            < self._settings.window_end
+        )
 
     async def _run_cycle(self) -> None:
         if not self._within_window():
-            logger.info(f"Outside operating window ({self._settings.window_start}h–{self._settings.window_end}h). Skipping.")
+            logger.info(
+                "Outside operating window (%sh–%sh). Skipping.",
+                self._settings.window_start,
+                self._settings.window_end,
+            )
             return
 
         logger.info("Starting check cycle...")
@@ -38,29 +46,44 @@ class Scheduler:
             saved = await self._repo.save(rate_data)
 
             if await self._repo.already_notified_today(pair):
-                logger.info(f"{pair}: already notified today. Skipping.")
+                logger.info("%s: already notified today. Skipping.", pair)
                 continue
 
-            avg = await self._repo.get_historical_average(pair, self._settings.average_days)
+            avg = await self._repo.get_historical_average(
+                pair, self._settings.average_days
+            )
             notify, reason = self._api.should_notify(pair, rate_data["bid"], avg)
 
             if notify:
-                logger.info(f"{pair}: ALERT — {reason}")
+                logger.info("%s: ALERT — %s", pair, reason)
                 try:
                     self._email.send_alert(rate_data, reason)
                     await self._repo.mark_as_notified(saved)
                 except Exception:
-                    logger.error(f"{pair}: failed to send email. Will retry next cycle.")
+                    logger.error("%s: failed to send email. Will retry next cycle.", pair)
             else:
-                logger.info(f"{pair}: R$ {rate_data['bid']:.4f} — no alert.")
+                logger.info("%s: R$ %.4f — no alert.", pair, rate_data["bid"])
 
         logger.info("Cycle complete.")
 
     async def run(self) -> None:
         logger.info("Exchange Bot started.")
-        logger.info(f"  Thresholds: USD > R$ {self._settings.threshold_usd} | EUR > R$ {self._settings.threshold_eur}")
-        logger.info(f"  Historical: {self._settings.average_percent_above}% above {self._settings.average_days}-day average")
-        logger.info(f"  Window: {self._settings.window_start}h–{self._settings.window_end}h | Interval: {INTERVAL_SECONDS // 60} min")
+        logger.info(
+            "  Thresholds: USD > R$ %s | EUR > R$ %s",
+            self._settings.threshold_usd,
+            self._settings.threshold_eur,
+        )
+        logger.info(
+            "  Historical: %s above %s-day average",
+            self._settings.average_percent_above,
+            self._settings.average_days,
+        )
+        logger.info(
+            "  Window: %sh–%sh | Interval: %s min",
+            self._settings.window_start,
+            self._settings.window_end,
+            INTERVAL_SECONDS // 60,
+        )
 
         while True:
             await self._run_cycle()

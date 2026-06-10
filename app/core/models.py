@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from beanie import Document
 from pydantic import Field
@@ -12,7 +12,7 @@ class ExchangeRate(Document):
     high: float
     low: float
     change_pct: float
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
     notified: bool = False
 
     class Settings:

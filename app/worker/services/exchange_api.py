@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import requests
 
@@ -21,7 +20,7 @@ class ExchangeApiService:
         self._average_days = settings.average_days
         self._average_percent_above = settings.average_percent_above
 
-    def fetch_rates(self) -> Optional[list[dict]]:
+    def fetch_rates(self) -> list[dict] | None:
         url = f"{API_BASE}/{','.join(PAIRS)}"
         params = {"token": self._api_key} if self._api_key else {}
         try:
@@ -29,14 +28,14 @@ class ExchangeApiService:
             resp.raise_for_status()
             data = resp.json()
         except requests.RequestException as e:
-            logger.error(f"Failed to fetch rates from AwesomeAPI: {e}")
+            logger.error("Failed to fetch rates from AwesomeAPI: %s", e)
             return None
 
         rates = []
         for pair in PAIRS:
             key = pair.replace("-", "")
             if key not in data:
-                logger.warning(f"Pair {pair} not found in response")
+                logger.warning("Pair %s not found in response", pair)
                 continue
             raw = data[key]
             rates.append({
@@ -47,11 +46,13 @@ class ExchangeApiService:
                 "low": float(raw["low"]),
                 "change_pct": float(raw["pctChange"]),
             })
-            logger.info(f"{pair}: bid={raw['bid']} ask={raw['ask']} ({raw['pctChange']}%)")
+            logger.info("%s: bid=%s ask=%s (%s%%)", pair, raw["bid"], raw["ask"], raw["pctChange"])
 
         return rates or None
 
-    def should_notify(self, pair: str, bid: float, historical_avg: float | None) -> tuple[bool, str]:
+    def should_notify(
+        self, pair: str, bid: float, historical_avg: float | None
+    ) -> tuple[bool, str]:
         threshold = self._threshold[pair]
         if bid >= threshold:
             return True, f"above fixed threshold (R$ {threshold:.2f})"

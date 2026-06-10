@@ -33,6 +33,7 @@ class EmailService:
         change = rate_data["change_pct"]
         ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+        change_color = "green" if change >= 0 else "red"
         subject = f"{flag} {label} alert — R$ {bid:.4f} ({reason})"
         html = f"""
         <html><body style="font-family: Arial, sans-serif; color: #333;">
@@ -47,7 +48,7 @@ class EmailService:
             <tr><td style="padding:6px 12px; background:#f5f5f5;"><b>Day low</b></td>
                 <td style="padding:6px 12px;">R$ {low:.4f}</td></tr>
             <tr><td style="padding:6px 12px; background:#f5f5f5;"><b>Change</b></td>
-                <td style="padding:6px 12px; color:{'green' if change >= 0 else 'red'};">{change:+.2f}%</td></tr>
+                <td style="padding:6px 12px; color:{change_color};">{change:+.2f}%</td></tr>
           </table>
           <p style="margin-top:16px; color:#666; font-size:13px;">
             Alert reason: <i>{reason}</i><br>Checked at {ts}
@@ -66,4 +67,4 @@ class EmailService:
             server.starttls()
             server.login(self._user, self._password)
             server.sendmail(self._from, self._to, msg.as_string())
-        logger.info(f"Alert email sent to {self._to}: {subject}")
+        logger.info("Alert email sent to %s: %s", self._to, subject)

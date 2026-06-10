@@ -9,7 +9,10 @@ Python worker that monitors USD and EUR exchange rates against BRL and sends ema
 - **pydantic-settings** — environment config
 - **requests** — HTTP calls to AwesomeAPI
 - **uv** — package manager
+- **ruff** — linter and formatter (dev dependency)
+- **pytest** + **pytest-asyncio** — test suite (dev dependency)
 - **Docker** + **devcontainer** — local dev and production deployment
+- **GitHub Actions** — CI (tests + lint + security) and CD (Docker build + VPS deploy)
 
 ## Project structure
 
@@ -27,6 +30,19 @@ app/
     └── services/
         ├── exchange_api.py          # ExchangeApiService — fetch & evaluate rates
         └── email.py                 # EmailService — SMTP alert emails
+tests/                               # Unit tests — mirrors app/ structure
+├── conftest.py                      # Shared fixtures (settings, usd_rate_data)
+├── core/
+│   ├── test_config.py
+│   ├── test_database.py
+│   └── test_models.py
+└── worker/
+    ├── test_scheduler.py
+    ├── repositories/
+    │   └── test_exchange_rate_repository.py
+    └── services/
+        ├── test_email_service.py
+        └── test_exchange_api_service.py
 ```
 
 ## Architecture
@@ -43,6 +59,19 @@ Requires a `.env` file (copy from `.env.example`). Open in VS Code and **Reopen 
 ```bash
 uv lock          # generate lock file (first time only)
 # then reopen in devcontainer
+```
+
+## Common commands (Makefile)
+
+```bash
+make sync        # uv sync --dev
+make lint        # ruff check app/
+make lint-fix    # ruff check app/ --fix
+make test        # uv run pytest
+make run         # uv run python app/main.py
+make up          # docker compose up -d --build
+make down        # docker compose down
+make logs        # docker compose logs -f currency-worker
 ```
 
 ## Running in production
@@ -77,6 +106,29 @@ Alert fires when **any** condition is true:
 2. `bid >= 30-day average × (1 + AVERAGE_PERCENT_ABOVE / 100)`
 
 At most one email per currency per day.
+
+## CI/CD
+
+### CI (`.github/workflows/ci.yml`)
+
+Runs on push and PR to `main` — three parallel jobs: `tests` (pytest + coverage), `lint` (ruff + mypy), `security` (bandit + safety).
+
+### CD (`.github/workflows/cd.yml`)
+
+Runs on push to `main` (ignores `*.md` and `terraform/**`):
+1. Builds and pushes Docker image to Docker Hub
+2. SSHes into VPS and runs `docker compose pull && docker compose up -d`
+
+Required GitHub Secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `VPS_HOST`, `VPS_USER`, `VPS_SSH_PRIVATE_KEY`, `VPS_PORT`, `VPS_COMPOSE_PATH`.
+
+## Testing
+
+All external dependencies (MongoDB, SMTP, HTTP) are mocked — no real services needed. Tests mirror `app/` structure. Run with `make test`.
+
+Key mocking patterns:
+- Beanie `Document` instantiation requires `get_pymongo_collection` to be patched (no `init_beanie` in tests)
+- `MagicMock.__ge__` returns `NotImplemented` by default — set `.return_value` explicitly when mocking `>=` comparisons with `datetime`
+- MIME email body is base64-encoded when content contains non-ASCII (emoji) — use `email.message_from_string` to decode before asserting
 
 ## Adding a new model
 

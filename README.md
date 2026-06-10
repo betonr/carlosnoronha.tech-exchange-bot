@@ -19,14 +19,30 @@ exchange-bot/
 │       └── services/
 │           ├── exchange_api.py          # ExchangeApiService — fetch & evaluate rates
 │           └── email.py                 # EmailService — SMTP alert emails
+├── tests/                               # Unit tests (mirrors app/ structure)
+│   ├── conftest.py
+│   ├── core/
+│   │   ├── test_config.py
+│   │   ├── test_database.py
+│   │   └── test_models.py
+│   └── worker/
+│       ├── test_scheduler.py
+│       ├── repositories/
+│       │   └── test_exchange_rate_repository.py
+│       └── services/
+│           ├── test_email_service.py
+│           └── test_exchange_api_service.py
 ├── .devcontainer/
 │   ├── devcontainer.json
 │   ├── docker-compose.yml
 │   └── Dockerfile
+├── .vscode/
+│   └── launch.json                      # Debug config for VS Code
 ├── .env.example
 ├── .gitignore
 ├── docker-compose.yml
 ├── Dockerfile
+├── Makefile
 └── pyproject.toml
 ```
 
@@ -62,6 +78,14 @@ Before opening for the first time, generate the lock file locally if you have `u
 uv lock
 ```
 
+To install dev dependencies (linter + tests) inside the container:
+
+```bash
+uv sync --dev
+# or
+make sync
+```
+
 ### 3. Production
 
 ```bash
@@ -73,6 +97,75 @@ docker compose logs -f currency-worker
 ```
 
 The production image uses `uv sync --frozen`, so `uv.lock` must be committed to the repository.
+
+## Common commands
+
+All commands are available via `make help`.
+
+| Command | Description |
+|---|---|
+| `make sync` | Install dependencies including dev |
+| `make lint` | Run ruff linter |
+| `make lint-fix` | Run ruff and apply auto-fixes |
+| `make test` | Run unit tests |
+| `make run` | Run the bot locally |
+| `make up` | Start production containers (detached) |
+| `make down` | Stop production containers |
+| `make logs` | Tail container logs |
+
+## Debugging
+
+A VS Code debug configuration is included. Open the **Run and Debug** panel and launch **Exchange Bot** (or press `F5`). The configuration loads `.env` automatically and sets the working directory to `app/`.
+
+## Testing
+
+Unit tests live in `tests/`, mirroring the structure of `app/`. All external dependencies (MongoDB, SMTP, HTTP) are mocked — no real services are needed to run the suite.
+
+```bash
+make test
+# or
+uv run pytest
+```
+
+## Linting
+
+[Ruff](https://docs.astral.sh/ruff/) is configured in `pyproject.toml` with the following rule sets: `E`/`W` (pycodestyle), `F` (pyflakes), `I` (isort), `G` (logging format), `UP` (pyupgrade).
+
+```bash
+make lint        # check only
+make lint-fix    # check and auto-fix
+```
+
+## CI/CD
+
+### CI — Tests & Code Quality (`.github/workflows/ci.yml`)
+
+Runs on every push and pull request to `main`, in three parallel jobs:
+
+| Job | What it does |
+|---|---|
+| `tests` | `pytest` with coverage (`--cov=app`) |
+| `lint` | `ruff check` + `ruff format --check` + `mypy` |
+| `security` | `bandit` (SAST) + `safety` (dependency vulnerabilities) |
+
+### CD — Build & Deploy (`.github/workflows/cd.yml`)
+
+Runs on push to `main` (ignores `*.md` and `terraform/**` changes), in two sequential jobs:
+
+1. **docker** — builds the image and pushes to Docker Hub (`betonoronha/homol:carlosnoronha.tech-exchange-bot-latest`)
+2. **deploy** — SSHes into the VPS, pulls the new image and restarts the containers with `docker compose up -d`
+
+Required GitHub Secrets:
+
+| Secret | Description |
+|---|---|
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token |
+| `VPS_HOST` | VPS IP or hostname |
+| `VPS_USER` | SSH user |
+| `VPS_SSH_PRIVATE_KEY` | SSH private key |
+| `VPS_PORT` | SSH port (default: `22`) |
+| `VPS_COMPOSE_PATH` | Path to `docker-compose.yml` on the VPS |
 
 ## Notification logic
 
