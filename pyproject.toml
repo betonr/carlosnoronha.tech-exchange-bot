@@ -1,0 +1,11 @@
+[project]
+name = "exchange-bot"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.32.3",
+    "beanie>=1.26.0",
+    "motor>=3.4.0",
+    "pydantic-settings>=2.3.0",
+    "python-dotenv>=1.0.1",
+]

@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    environment:
+      - TZ=America/Sao_Paulo
+    env_file:
+      - ../.env
