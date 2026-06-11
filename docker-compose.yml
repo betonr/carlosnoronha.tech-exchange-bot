@@ -1,6 +1,6 @@
 services:
   exchange-bot:
-    build: betonoronha/homol:carlosnoronha.tech-exchange-bot-latest
+    image: betonoronha/homol:carlosnoronha.tech-exchange-bot-latest
     container_name: exchange-bot
     restart: unless-stopped
     env_file:
