@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # AwesomeAPI
     awesomeapi_key: str = ""
@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str
     smtp_password: str
+    smtp_use_tls: bool = False
+    smtp_start_tls: bool = True
     email_from: str
     email_to: str
 

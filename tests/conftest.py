@@ -6,6 +6,7 @@ from core.config import Settings
 @pytest.fixture
 def settings():
     return Settings(
+        _env_file=None,
         mongo_uri="mongodb://localhost:27017",
         smtp_host="smtp.example.com",
         smtp_user="bot@example.com",

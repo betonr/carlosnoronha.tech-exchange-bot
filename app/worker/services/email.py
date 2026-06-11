@@ -20,6 +20,8 @@ class EmailService:
         self._port = settings.smtp_port
         self._user = settings.smtp_user
         self._password = settings.smtp_password
+        self._use_tls = settings.smtp_use_tls
+        self._start_tls = settings.smtp_start_tls
         self._from = settings.email_from
         self._to = settings.email_to
 
@@ -62,9 +64,11 @@ class EmailService:
         msg["To"] = self._to
         msg.attach(MIMEText(html, "html", "utf-8"))
 
-        with smtplib.SMTP(self._host, self._port) as server:
+        smtp_cls = smtplib.SMTP_SSL if self._use_tls else smtplib.SMTP
+        with smtp_cls(self._host, self._port) as server:
             server.ehlo()
-            server.starttls()
+            if not self._use_tls and self._start_tls:
+                server.starttls()
             server.login(self._user, self._password)
             server.sendmail(self._from, self._to, msg.as_string())
         logger.info("Alert email sent to %s: %s", self._to, subject)

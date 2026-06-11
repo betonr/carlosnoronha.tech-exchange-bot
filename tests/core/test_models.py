@@ -9,7 +9,7 @@ from core.models import ExchangeRate
 @pytest.fixture(autouse=True)
 def mock_beanie_init():
     """Beanie requires init_beanie() before instantiating Documents. Mock it for unit tests."""
-    with patch.object(ExchangeRate, "get_pymongo_collection", return_value=MagicMock()):
+    with patch.object(ExchangeRate, "get_motor_collection", return_value=MagicMock()):
         yield
 
 

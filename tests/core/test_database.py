@@ -9,7 +9,7 @@ from core.database import init_db
 async def test_init_db_connects_with_correct_uri(settings):
     with (
         patch("core.database.motor.motor_asyncio.AsyncIOMotorClient") as mock_client,
-        patch("core.database.init_beanie", new_callable=AsyncMock) as mock_init_beanie,
+        patch("core.database.init_beanie", new_callable=AsyncMock),
     ):
         mock_client.return_value.__getitem__.return_value = MagicMock()
         await init_db(settings)

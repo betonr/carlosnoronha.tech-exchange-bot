@@ -7,10 +7,10 @@ sync: ## Install dependencies (including dev)
 	uv sync --dev
 
 lint: ## Run ruff linter
-	uv run ruff check app/
+	uv run ruff check app/ tests/
 
 lint-fix: ## Run ruff linter and apply auto-fixes
-	uv run ruff check app/ --fix
+	uv run ruff check app/ tests/ --fix
 
 test: ## Run unit tests
 	uv run pytest

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.config import Settings
 from worker.services.email import EmailService
 
 
@@ -12,8 +13,40 @@ def email_service(settings):
     return EmailService(settings)
 
 
+@pytest.fixture
+def tls_settings(settings):
+    return Settings(
+        _env_file=None,
+        mongo_uri=settings.mongo_uri,
+        smtp_host=settings.smtp_host,
+        smtp_port=465,
+        smtp_user=settings.smtp_user,
+        smtp_password=settings.smtp_password,
+        email_from=settings.email_from,
+        email_to=settings.email_to,
+        smtp_use_tls=True,
+        smtp_start_tls=False,
+    )
+
+
+@pytest.fixture
+def plain_settings(settings):
+    return Settings(
+        _env_file=None,
+        mongo_uri=settings.mongo_uri,
+        smtp_host=settings.smtp_host,
+        smtp_port=25,
+        smtp_user=settings.smtp_user,
+        smtp_password=settings.smtp_password,
+        email_from=settings.email_from,
+        email_to=settings.email_to,
+        smtp_use_tls=False,
+        smtp_start_tls=False,
+    )
+
+
 def _smtp_mock():
-    """Return a (context_manager, server_mock) pair for smtplib.SMTP."""
+    """Return a (context_manager, server_mock) pair for smtplib.SMTP / SMTP_SSL."""
     server = MagicMock()
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=server)
@@ -41,20 +74,69 @@ def _parse_sent_email(server):
     return subject, html
 
 
-class TestSendAlert:
-    def test_connects_to_configured_host_and_port(self, email_service, settings, usd_rate_data):
+class TestStartTls:
+    """Default mode: smtp_use_tls=False, smtp_start_tls=True (SMTP + STARTTLS)."""
+
+    def test_uses_smtp_class(self, email_service, settings, usd_rate_data):
         ctx, _ = _smtp_mock()
         with patch("worker.services.email.smtplib.SMTP", return_value=ctx) as mock_smtp:
             email_service.send_alert(usd_rate_data, "above threshold")
         mock_smtp.assert_called_once_with(settings.smtp_host, settings.smtp_port)
 
-    def test_performs_tls_handshake_and_login(self, email_service, settings, usd_rate_data):
+    def test_calls_starttls(self, email_service, settings, usd_rate_data):
         ctx, server = _smtp_mock()
         with patch("worker.services.email.smtplib.SMTP", return_value=ctx):
             email_service.send_alert(usd_rate_data, "above threshold")
-        server.ehlo.assert_called_once()
         server.starttls.assert_called_once()
         server.login.assert_called_once_with(settings.smtp_user, settings.smtp_password)
+
+    def test_does_not_use_smtp_ssl(self, email_service, usd_rate_data):
+        ctx, _ = _smtp_mock()
+        with patch("worker.services.email.smtplib.SMTP", return_value=ctx):
+            with patch("worker.services.email.smtplib.SMTP_SSL") as mock_ssl:
+                email_service.send_alert(usd_rate_data, "above threshold")
+        mock_ssl.assert_not_called()
+
+
+class TestSslTls:
+    """SMTP_USE_TLS=true mode: smtp_use_tls=True (SMTP_SSL, no STARTTLS)."""
+
+    def test_uses_smtp_ssl_class(self, tls_settings, usd_rate_data):
+        service = EmailService(tls_settings)
+        ctx, _ = _smtp_mock()
+        with patch("worker.services.email.smtplib.SMTP_SSL", return_value=ctx) as mock_ssl:
+            service.send_alert(usd_rate_data, "above threshold")
+        mock_ssl.assert_called_once_with(tls_settings.smtp_host, tls_settings.smtp_port)
+
+    def test_does_not_call_starttls(self, tls_settings, usd_rate_data):
+        service = EmailService(tls_settings)
+        ctx, server = _smtp_mock()
+        with patch("worker.services.email.smtplib.SMTP_SSL", return_value=ctx):
+            service.send_alert(usd_rate_data, "above threshold")
+        server.starttls.assert_not_called()
+
+    def test_does_not_use_plain_smtp(self, tls_settings, usd_rate_data):
+        service = EmailService(tls_settings)
+        ctx, _ = _smtp_mock()
+        with patch("worker.services.email.smtplib.SMTP_SSL", return_value=ctx):
+            with patch("worker.services.email.smtplib.SMTP") as mock_smtp:
+                service.send_alert(usd_rate_data, "above threshold")
+        mock_smtp.assert_not_called()
+
+
+class TestPlainSmtp:
+    """No TLS mode: smtp_use_tls=False, smtp_start_tls=False."""
+
+    def test_uses_smtp_without_starttls(self, plain_settings, usd_rate_data):
+        service = EmailService(plain_settings)
+        ctx, server = _smtp_mock()
+        with patch("worker.services.email.smtplib.SMTP", return_value=ctx):
+            service.send_alert(usd_rate_data, "above threshold")
+        server.starttls.assert_not_called()
+
+
+class TestSendAlert:
+    """Content and addressing tests — independent of TLS mode."""
 
     def test_sends_from_and_to_correct_addresses(self, email_service, settings, usd_rate_data):
         ctx, server = _smtp_mock()
@@ -77,10 +159,10 @@ class TestSendAlert:
         with patch("worker.services.email.smtplib.SMTP", return_value=ctx):
             email_service.send_alert(usd_rate_data, "above threshold")
         _, html = _parse_sent_email(server)
-        assert "5.5000" in html   # bid
-        assert "5.5500" in html   # ask
-        assert "5.6000" in html   # high
-        assert "5.4500" in html   # low
+        assert "5.5000" in html
+        assert "5.5500" in html
+        assert "5.6000" in html
+        assert "5.4500" in html
 
     def test_positive_change_renders_green(self, email_service, usd_rate_data):
         ctx, server = _smtp_mock()
