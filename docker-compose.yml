@@ -1,10 +1,10 @@
 services:
-  currency-worker:
-    build: .
-    container_name: currency-worker
+  exchange-bot:
+    build: betonoronha/homol:carlosnoronha.tech-exchange-bot-latest
+    container_name: exchange-bot
     restart: unless-stopped
     env_file:
-      - .env
+      - ${APP_ENV_FILE:-.env.prod}
     environment:
       - TZ=America/Sao_Paulo
     logging:
@@ -12,3 +12,9 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    networks:
+      - webapps
+
+networks:
+  webapps:
+    external: true

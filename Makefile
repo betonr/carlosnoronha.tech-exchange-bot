@@ -1,4 +1,4 @@
-.PHONY: help sync lint lint-fix test run up down logs
+.PHONY: help sync lint lint-fix format test run up down logs
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -11,6 +11,9 @@ lint: ## Run ruff linter
 
 lint-fix: ## Run ruff linter and apply auto-fixes
 	uv run ruff check app/ tests/ --fix
+
+format: ## Format code with ruff
+	uv run ruff format app/ tests/
 
 test: ## Run unit tests
 	uv run pytest
