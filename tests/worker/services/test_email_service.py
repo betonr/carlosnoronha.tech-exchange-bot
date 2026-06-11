@@ -60,10 +60,7 @@ def _parse_sent_email(server):
     msg = stdlib_email.message_from_string(raw)
 
     parts = _decode_header(msg["Subject"])
-    subject = "".join(
-        chunk.decode(enc or "utf-8") if isinstance(chunk, bytes) else chunk
-        for chunk, enc in parts
-    )
+    subject = "".join(chunk.decode(enc or "utf-8") if isinstance(chunk, bytes) else chunk for chunk, enc in parts)
 
     html = ""
     for part in msg.walk():

@@ -42,7 +42,5 @@ def test_timestamp_is_timezone_aware():
 
 
 def test_notified_can_be_set_true():
-    rate = ExchangeRate(
-        pair="EUR-BRL", bid=6.0, ask=6.05, high=6.1, low=5.95, change_pct=-0.3, notified=True
-    )
+    rate = ExchangeRate(pair="EUR-BRL", bid=6.0, ask=6.05, high=6.1, low=5.95, change_pct=-0.3, notified=True)
     assert rate.notified is True

@@ -25,9 +25,7 @@ class ExchangeRateRepository:
             logger.info("Insufficient samples for %s historical average (%s records)", pair, count)
             return None
         avg = result[0]["average"]
-        logger.info(
-            "%s-day average for %s: R$ %.4f (%s samples)", days, pair, avg, result[0]["count"]
-        )
+        logger.info("%s-day average for %s: R$ %.4f (%s samples)", days, pair, avg, result[0]["count"])
         return avg
 
     async def already_notified_today(self, pair: str) -> bool:

@@ -38,21 +38,21 @@ class ExchangeApiService:
                 logger.warning("Pair %s not found in response", pair)
                 continue
             raw = data[key]
-            rates.append({
-                "pair": pair,
-                "bid": float(raw["bid"]),
-                "ask": float(raw["ask"]),
-                "high": float(raw["high"]),
-                "low": float(raw["low"]),
-                "change_pct": float(raw["pctChange"]),
-            })
+            rates.append(
+                {
+                    "pair": pair,
+                    "bid": float(raw["bid"]),
+                    "ask": float(raw["ask"]),
+                    "high": float(raw["high"]),
+                    "low": float(raw["low"]),
+                    "change_pct": float(raw["pctChange"]),
+                }
+            )
             logger.info("%s: bid=%s ask=%s (%s%%)", pair, raw["bid"], raw["ask"], raw["pctChange"])
 
         return rates or None
 
-    def should_notify(
-        self, pair: str, bid: float, historical_avg: float | None
-    ) -> tuple[bool, str]:
+    def should_notify(self, pair: str, bid: float, historical_avg: float | None) -> tuple[bool, str]:
         threshold = self._threshold[pair]
         if bid >= threshold:
             return True, f"above fixed threshold (R$ {threshold:.2f})"

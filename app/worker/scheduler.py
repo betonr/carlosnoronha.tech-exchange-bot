@@ -9,7 +9,7 @@ from worker.services.exchange_api import ExchangeApiService
 
 logger = logging.getLogger(__name__)
 
-INTERVAL_SECONDS = 300  # 5 minutes
+INTERVAL_SECONDS = 600  # 10 minutes
 
 
 class Scheduler:
@@ -20,11 +20,7 @@ class Scheduler:
         self._repo = ExchangeRateRepository()
 
     def _within_window(self) -> bool:
-        return (
-            self._settings.window_start
-            <= datetime.now().hour
-            < self._settings.window_end
-        )
+        return self._settings.window_start <= datetime.now().hour < self._settings.window_end
 
     async def _run_cycle(self) -> None:
         if not self._within_window():
@@ -49,9 +45,7 @@ class Scheduler:
                 logger.info("%s: already notified today. Skipping.", pair)
                 continue
 
-            avg = await self._repo.get_historical_average(
-                pair, self._settings.average_days
-            )
+            avg = await self._repo.get_historical_average(pair, self._settings.average_days)
             notify, reason = self._api.should_notify(pair, rate_data["bid"], avg)
 
             if notify:
